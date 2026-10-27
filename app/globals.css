@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+/* Design tokens. Use them as Tailwind classes: bg-base, text-ink, text-accent, text-muted, border-line. */
+@theme {
+  --color-base: #080808;
+  --color-surface: #141414;
+  --color-line: #262626;
+  --color-ink: #f2efe9;
+  --color-muted: #9a958d;
+  --color-accent: #ff4d1c;
+  --color-accent-ink: #080808;
+
+  --font-sans: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background-color: var(--color-base);
+  color: var(--color-ink);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-base);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
