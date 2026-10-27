@@ -1,5 +1,9 @@
+import { cacheLife } from "next/cache";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OEMBED_TIMEOUT_MS, getVideoMeta, oembedUrl } from "./oembed";
+
+// "use cache" is a plain string outside Next, but cacheLife needs a stand-in.
+vi.mock("next/cache", () => ({ cacheLife: vi.fn() }));
 
 const ID = "dQw4w9WgXcQ";
 
@@ -14,7 +18,9 @@ const json = (body: unknown, status = 200) =>
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   vi.useRealTimers();
+  vi.mocked(cacheLife).mockClear();
 });
 
 describe("oembedUrl", () => {
@@ -24,16 +30,29 @@ describe("oembedUrl", () => {
     expect(url.searchParams.get("url")).toBe(`https://www.youtube.com/watch?v=${ID}`);
     expect(url.searchParams.get("format")).toBe("json");
   });
+
+  it("uses OEMBED_ENDPOINT when set (e2e stub)", () => {
+    vi.stubEnv("OEMBED_ENDPOINT", "http://localhost:3101/oembed");
+    expect(oembedUrl(ID).startsWith("http://localhost:3101/oembed?url=")).toBe(true);
+  });
+
+  it("ignores an OEMBED_ENDPOINT that is not http(s)", () => {
+    vi.stubEnv("OEMBED_ENDPOINT", "file:///etc/passwd");
+    expect(oembedUrl(ID).startsWith("https://www.youtube.com/oembed?url=")).toBe(true);
+  });
 });
 
 describe("getVideoMeta", () => {
   it("returns the title and channel", async () => {
     const fetchFn = mockFetch(() => json({ title: "  A video  ", author_name: "A channel" }));
     await expect(getVideoMeta(ID)).resolves.toEqual({ title: "A video", authorName: "A channel" });
-    expect(fetchFn).toHaveBeenCalledWith(
-      oembedUrl(ID),
-      expect.objectContaining({ next: { revalidate: 86400 } }),
-    );
+    expect(fetchFn).toHaveBeenCalledWith(oembedUrl(ID));
+  });
+
+  it("caches for a day", async () => {
+    mockFetch(() => json({ title: "A video" }));
+    await getVideoMeta(ID);
+    expect(cacheLife).toHaveBeenCalledWith(expect.objectContaining({ revalidate: 86400 }));
   });
 
   it("uses an empty author name when missing", async () => {
@@ -41,7 +60,7 @@ describe("getVideoMeta", () => {
     await expect(getVideoMeta(ID)).resolves.toEqual({ title: "A video", authorName: "" });
   });
 
-  it.each([[401], [403], [404], [500]])("returns null on HTTP %i", async (status) => {
+  it.each([[401], [403], [404], [429], [500], [503]])("returns null on HTTP %i", async (status) => {
     mockFetch(() => json({ error: "nope" }, status));
     await expect(getVideoMeta(ID)).resolves.toBeNull();
   });
