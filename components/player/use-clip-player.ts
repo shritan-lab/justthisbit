@@ -27,6 +27,15 @@ export type ClipPlayerError =
 
 export type ClipPlayerStatus = "loading" | "ready" | "error";
 
+export type ClipPlayerOptions = {
+  /**
+   * "always" (the viewer): pause whenever playback crosses `end` from inside the clip.
+   * "preview" (the create page): only after `replay()`, so the sender can play past `end`
+   * while looking for the right moment. Disarms once the preview reaches the end.
+   */
+  endEnforcement?: "always" | "preview";
+};
+
 export type ClipPlayer = {
   /** Attach to an empty element. The hook puts the YouTube iframe inside it. */
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -57,13 +66,22 @@ function playbackRate(player: YTPlayer): number {
  * - Any onError code, a failed script load, or no onReady within 10 seconds ends in `status: "error"`.
  *
  * `start` and `end` can change without recreating the player (the create page edits them live).
+ * `options.endEnforcement` picks when the end is enforced (see ClipPlayerOptions).
  * A new `videoId` creates a new player.
  */
-export function useClipPlayer(videoId: string, start: number, end: number): ClipPlayer {
+export function useClipPlayer(
+  videoId: string,
+  start: number,
+  end: number,
+  { endEnforcement = "always" }: ClipPlayerOptions = {},
+): ClipPlayer {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const lastSampleRef = useRef<PlaybackSample | null>(null);
   const rangeRef = useRef({ start, end });
+  const enforcementRef = useRef(endEnforcement);
+  // In "preview" mode, true from replay() until the preview reaches the end.
+  const previewArmedRef = useRef(false);
 
   const [status, setStatus] = useState<ClipPlayerStatus>("loading");
   const [error, setError] = useState<ClipPlayerError | null>(null);
@@ -83,6 +101,10 @@ export function useClipPlayer(videoId: string, start: number, end: number): Clip
   useEffect(() => {
     rangeRef.current = { start, end };
   }, [start, end]);
+
+  useEffect(() => {
+    enforcementRef.current = endEnforcement;
+  }, [endEnforcement]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -109,9 +131,11 @@ export function useClipPlayer(videoId: string, start: number, end: number): Clip
       const current = sample(p);
       const previous = lastSampleRef.current;
       lastSampleRef.current = current;
-      if (previous && crossedClipEnd({ previous, current, ...rangeRef.current, playbackRate: playbackRate(p) })) {
+      const armed = enforcementRef.current === "always" || previewArmedRef.current;
+      if (armed && previous && crossedClipEnd({ previous, current, ...rangeRef.current, playbackRate: playbackRate(p) })) {
         stopPolling();
         lastSampleRef.current = null;
+        previewArmedRef.current = false;
         p.pauseVideo();
         setClipEnded(true);
       }
@@ -167,6 +191,7 @@ export function useClipPlayer(videoId: string, start: number, end: number): Clip
           // Covers clips whose end is past the end of the video.
           stopPolling();
           lastSampleRef.current = null;
+          previewArmedRef.current = false;
           setIsPlaying(false);
           setClipEnded(true);
           break;
@@ -220,6 +245,7 @@ export function useClipPlayer(videoId: string, start: number, end: number): Clip
     const p = playerRef.current;
     if (!p) return;
     lastSampleRef.current = null;
+    previewArmedRef.current = true;
     setClipEnded(false);
     p.seekTo(rangeRef.current.start, true);
     p.playVideo();

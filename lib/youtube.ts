@@ -89,3 +89,9 @@ export function parseYouTubeInput(input: string): YouTubeInput | null {
   }
   return null;
 }
+
+/** `https://youtu.be/{id}` plus `?t={start}` when start is above 0. Short enough to read in the paste field. */
+export function youtubeShortUrl(videoId: string, start?: number): string {
+  const base = `https://youtu.be/${encodeURIComponent(videoId)}`;
+  return start !== undefined && Number.isFinite(start) && start > 0 ? `${base}?t=${Math.floor(start)}` : base;
+}

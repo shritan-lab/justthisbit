@@ -40,6 +40,34 @@ export function buildClipPath({ videoId, start, end, note }: Clip): string {
   return n ? `${base}?n=${encodeURIComponent(n)}` : base;
 }
 
+/**
+ * The full link a sender shares: `{siteUrl}/c/{videoId}/{start}-{end}?n={note}`.
+ * Pass SITE_URL from lib/site.ts, never `window.location.origin`, so preview deployments
+ * and localhost never leak into a shared link.
+ */
+export function buildClipUrl(clip: Clip, siteUrl: string): string {
+  return `${siteUrl.trim().replace(/\/+$/, "")}${buildClipPath(clip)}`;
+}
+
+/**
+ * True when `url` is an http(s) link to a valid clip page on any host.
+ * Used to check links read back from browser storage before they become an href.
+ */
+export function isClipUrl(url: unknown): url is string {
+  if (typeof url !== "string" || url.length > 2048) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
+  const raw = matchClipPath(parsed.pathname);
+  if (!raw) return false;
+  const n = parsed.searchParams.get("n");
+  return parseClipParams(n === null ? raw : { ...raw, n }).ok;
+}
+
 const videoIdSchema = z.string().regex(VIDEO_ID_RE);
 
 // Up to 9 digits per side keeps the numbers safe integers while rejecting junk like "1e5" or "-5".

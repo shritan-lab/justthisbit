@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { getSiteUrl } from "../lib/site";
 import { openClip, viewer } from "./support/clip-page";
 import {
+  E2E_SITE_URL,
   IMESSAGE_UA,
   KNOWN_VIDEO,
   UNKNOWN_VIDEO_ID,
@@ -12,7 +12,7 @@ import {
 } from "./support/fixtures";
 
 const ID = KNOWN_VIDEO.id;
-const SITE_URL = getSiteUrl(); // the e2e server runs without VERCEL_PROJECT_PRODUCTION_URL
+const SITE_URL = E2E_SITE_URL; // the e2e build sets VERCEL_PROJECT_PRODUCTION_URL
 
 const NOTE = "watch his face 😂 & then laugh";
 const NOTE_PATH = `/c/${ID}/90-132?n=${encodeURIComponent(NOTE)}`;

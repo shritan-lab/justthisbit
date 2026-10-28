@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clipPlayerVars, youtubeEmbedUrl, youtubeThumbnailUrl } from "./youtube-embed";
+import { clipPlayerVars, isEmbedBlockedCode, youtubeEmbedUrl, youtubeThumbnailUrl } from "./youtube-embed";
 
 const ID = "dQw4w9WgXcQ";
 const ORIGIN = "https://justthisbit.vercel.app";
@@ -49,5 +49,15 @@ describe("youtubeEmbedUrl", () => {
 describe("youtubeThumbnailUrl", () => {
   it("uses hqdefault on i.ytimg.com", () => {
     expect(youtubeThumbnailUrl(ID)).toBe(`https://i.ytimg.com/vi/${ID}/hqdefault.jpg`);
+  });
+});
+
+describe("isEmbedBlockedCode", () => {
+  it("is true for 101, 150 and 153", () => {
+    for (const code of [101, 150, 153]) expect(isEmbedBlockedCode(code)).toBe(true);
+  });
+
+  it("is false for other errors", () => {
+    for (const code of [2, 5, 100, 0, -1, 999, Number.NaN]) expect(isEmbedBlockedCode(code)).toBe(false);
   });
 });

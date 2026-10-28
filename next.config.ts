@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { getSiteUrl } from "./lib/site";
 
 // SPEC section 7. Referrer-Policy must stay strict-origin-when-cross-origin:
 // YouTube embeds fail with Error 153 when no referrer is sent.
@@ -9,6 +10,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Inlined into server and browser code at build time, so every generated clip link uses the
+  // production origin. Preview builds get it too: VERCEL_PROJECT_PRODUCTION_URL is always production.
+  env: {
+    NEXT_PUBLIC_SITE_URL: getSiteUrl(),
+  },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

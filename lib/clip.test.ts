@@ -3,6 +3,8 @@ import {
   MAX_CLIP_SECONDS,
   MAX_NOTE_LENGTH,
   buildClipPath,
+  buildClipUrl,
+  isClipUrl,
   matchClipPath,
   noteLength,
   parseClipParams,
@@ -226,5 +228,48 @@ describe("limits", () => {
   it("match the spec", () => {
     expect(MAX_CLIP_SECONDS).toBe(3600);
     expect(MAX_NOTE_LENGTH).toBe(140);
+  });
+});
+
+describe("buildClipUrl", () => {
+  const SITE = "https://justthisbit.vercel.app";
+
+  it("puts the clip path on the site origin", () => {
+    expect(buildClipUrl({ videoId: ID, start: 90, end: 120 }, SITE)).toBe(`${SITE}/c/${ID}/90-120`);
+  });
+
+  it("keeps the encoded note", () => {
+    expect(buildClipUrl({ videoId: ID, start: 720, end: 750, note: "the dots connect 👀" }, SITE)).toBe(
+      `${SITE}/c/${ID}/720-750?n=the%20dots%20connect%20%F0%9F%91%80`,
+    );
+  });
+
+  it("does not double the slash when the origin has a trailing slash", () => {
+    expect(buildClipUrl({ videoId: ID, start: 0, end: 1 }, `${SITE}/`)).toBe(`${SITE}/c/${ID}/0-1`);
+  });
+
+  it("round-trips a note with &, #, ? and a newline", () => {
+    const note = "a & b #1?\nnext line";
+    const url = new URL(buildClipUrl({ videoId: ID, start: 1, end: 2, note }, SITE));
+    expect(url.origin).toBe(SITE);
+    expect(url.searchParams.get("n")).toBe(note);
+  });
+});
+
+describe("isClipUrl", () => {
+  it("accepts clip links on http and https", () => {
+    expect(isClipUrl(`https://justthisbit.vercel.app/c/${ID}/90-120`)).toBe(true);
+    expect(isClipUrl(`http://localhost:3000/c/${ID}/90-120?n=hi`)).toBe(true);
+  });
+
+  it("rejects other schemes, other paths and broken clips", () => {
+    expect(isClipUrl(`javascript:alert(1)//c/${ID}/90-120`)).toBe(false);
+    expect(isClipUrl(`data:text/html,/c/${ID}/90-120`)).toBe(false);
+    expect(isClipUrl("https://justthisbit.vercel.app/")).toBe(false);
+    expect(isClipUrl(`https://justthisbit.vercel.app/c/${ID}/120-90`)).toBe(false);
+    expect(isClipUrl(`https://justthisbit.vercel.app/c/short/1-2`)).toBe(false);
+    expect(isClipUrl("not a url")).toBe(false);
+    expect(isClipUrl(42)).toBe(false);
+    expect(isClipUrl(`https://x.test/c/${ID}/1-2?n=${"a".repeat(141)}`)).toBe(false);
   });
 });

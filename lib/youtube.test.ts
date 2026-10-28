@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseYouTubeInput } from "./youtube";
+import { parseYouTubeInput, youtubeShortUrl } from "./youtube";
 
 const ID = "dQw4w9WgXcQ";
 const ID2 = "a-b_c-d_e-f"; // uses every non-alphanumeric character allowed in an id
@@ -192,5 +192,28 @@ describe("parseYouTubeInput: returns null for anything else", () => {
 
   it("handles very long input without crashing", () => {
     expect(parseYouTubeInput("a ".repeat(50_000))).toBeNull();
+  });
+});
+
+describe("youtubeShortUrl", () => {
+  it("builds a youtu.be link with and without a start", () => {
+    expect(youtubeShortUrl("dQw4w9WgXcQ")).toBe("https://youtu.be/dQw4w9WgXcQ");
+    expect(youtubeShortUrl("dQw4w9WgXcQ", 0)).toBe("https://youtu.be/dQw4w9WgXcQ");
+    expect(youtubeShortUrl("dQw4w9WgXcQ", 840)).toBe("https://youtu.be/dQw4w9WgXcQ?t=840");
+    expect(youtubeShortUrl("dQw4w9WgXcQ", 90.7)).toBe("https://youtu.be/dQw4w9WgXcQ?t=90");
+  });
+
+  it("parses back to the same video and start", () => {
+    expect(parseYouTubeInput(youtubeShortUrl("UF8uR6Z6KLc", 720))).toEqual({ videoId: "UF8uR6Z6KLc", startSeconds: 720 });
+    expect(parseYouTubeInput(youtubeShortUrl("UF8uR6Z6KLc"))).toEqual({ videoId: "UF8uR6Z6KLc" });
+  });
+});
+
+describe("parseYouTubeInput: Android share text from the YouTube app", () => {
+  it("finds the video and start in 'Check this out' text", () => {
+    expect(parseYouTubeInput("Check this out https://youtu.be/UF8uR6Z6KLc?si=abc&t=840")).toEqual({
+      videoId: "UF8uR6Z6KLc",
+      startSeconds: 840,
+    });
   });
 });

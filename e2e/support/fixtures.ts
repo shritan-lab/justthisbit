@@ -1,3 +1,11 @@
+/**
+ * The e2e build runs with VERCEL_PROJECT_PRODUCTION_URL set to this host (playwright.config.ts),
+ * while the app itself is served from localhost. Generated links must use this host, which
+ * proves links never take the origin from the page they are made on.
+ */
+export const E2E_PRODUCTION_HOST = "justthisbit.vercel.app";
+export const E2E_SITE_URL = `https://${E2E_PRODUCTION_HOST}`;
+
 // Videos known to the oEmbed stub (e2e/support/oembed-stub.mjs).
 export const KNOWN_VIDEO = { id: "dQw4w9WgXcQ", title: "Test video & friends", author: "Test Channel" };
 

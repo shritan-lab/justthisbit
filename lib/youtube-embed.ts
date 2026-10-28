@@ -29,3 +29,10 @@ export function youtubeEmbedUrl(videoId: string, vars: ClipPlayerVars): string {
 export function youtubeThumbnailUrl(videoId: string): string {
   return `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg`;
 }
+
+/** onError codes that mean the owner turned off playback outside YouTube (101, 150) or the embed was refused (153). */
+export const EMBED_BLOCKED_CODES: readonly number[] = [101, 150, 153];
+
+export function isEmbedBlockedCode(code: number): boolean {
+  return EMBED_BLOCKED_CODES.includes(code);
+}

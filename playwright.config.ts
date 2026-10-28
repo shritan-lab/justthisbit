@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { E2E_PRODUCTION_HOST } from "./e2e/support/fixtures";
 
 const PORT = 3100;
 const OEMBED_STUB_PORT = 3101;
@@ -30,7 +31,11 @@ export default defineConfig({
     {
       command: `npm run build && npx next start --port ${PORT}`,
       url: baseURL,
-      env: { OEMBED_ENDPOINT: `http://localhost:${OEMBED_STUB_PORT}/oembed` },
+      env: {
+        OEMBED_ENDPOINT: `http://localhost:${OEMBED_STUB_PORT}/oembed`,
+        // Built like production, so generated links must use this origin, not localhost.
+        VERCEL_PROJECT_PRODUCTION_URL: E2E_PRODUCTION_HOST,
+      },
       reuseExistingServer: !process.env.CI,
       timeout: 240_000,
     },
