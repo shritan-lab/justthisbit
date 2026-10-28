@@ -39,4 +39,5 @@ Full product and technical spec: `docs/SPEC.md`. Read it before starting any tas
 ## Working style
 - Keep the app small. Do not add features that are not in `docs/SPEC.md` without asking.
 - Edit files with the file tools, never through PowerShell redirection (it corrupts encoding on Windows).
+- Commits are authored as shritan-lab. Never add Co-Authored-By lines.
 - Definition of done for any task: `npm run check` passes, `npm run test:e2e` passes, pushed to `main`, the Vercel production deploy succeeded, and the change was verified on the live URL. Say clearly if any of these did not happen.
