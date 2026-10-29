@@ -1,5 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { formatClock, formatDuration, parseTimeInput } from "./time";
+import { formatClock, formatDuration, parseKeypadTimeInput, parseTimeInput } from "./time";
+
+describe("parseKeypadTimeInput", () => {
+  it.each([
+    ["302", 302],
+    ["5:02", 302],
+    ["1:05:30", 3930],
+    ["5.02", 302],
+    ["5,02", 302],
+    ["1.05.30", 3930],
+    ["1,05,30", 3930],
+    [" 5.02 ", 302],
+    ["0.00", 0],
+    ["1m30s", 90],
+  ])("%j -> %i", (input, expected) => {
+    expect(parseKeypadTimeInput(input)).toBe(expected);
+  });
+
+  it.each(["", "abc", "5.", ".5", "5..02", "5.60", "1.2.3.4", "5.02:10", "-5", "5:02.5", "1.5e3"])(
+    "%j -> null",
+    (input) => {
+      expect(parseKeypadTimeInput(input)).toBeNull();
+    },
+  );
+
+  it("returns null for non-string input", () => {
+    expect(parseKeypadTimeInput(42 as unknown as string)).toBeNull();
+  });
+});
 
 describe("parseTimeInput", () => {
   it.each([

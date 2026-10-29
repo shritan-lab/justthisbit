@@ -124,6 +124,12 @@ const FAKE_IFRAME_API = String.raw`
   Player.prototype.playVideo = function () { this.log("playVideo", arguments); this._play(); };
   Player.prototype.pauseVideo = function () { this.log("pauseVideo", arguments); this._pause(); };
   Player.prototype.seekTo = function () { this.log("seekTo", arguments); this._seek(arguments[0]); };
+  Player.prototype.cueVideoById = function (opts) {
+    this.log("cueVideoById", arguments);
+    this.freeze();
+    this.base = Math.max(0, Math.min(Number((opts && opts.startSeconds) || 0), this.duration));
+    this.setState(S.CUED);
+  };
   Player.prototype.getCurrentTime = function () { return this.now(); };
   Player.prototype.getPlayerState = function () { return this.state; };
   Player.prototype.getDuration = function () { return this.duration; };
@@ -218,7 +224,7 @@ export class YouTubeMock {
     return (await this.snapshot())?.state ?? Number.NaN;
   }
 
-  /** Calls the app made on the player (playVideo, pauseVideo, seekTo, destroy). */
+  /** Calls the app made on the player (playVideo, pauseVideo, seekTo, cueVideoById, destroy). */
   calls(): Promise<MockCall[]> {
     return this.page.evaluate(() => (window as MockWindow).__ytMock?.calls ?? []);
   }

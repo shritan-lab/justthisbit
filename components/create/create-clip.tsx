@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { hasEntryInput, initialPasteInput, MAX_ENTRY_INPUT_LENGTH } from "@/lib/create-entry";
+import { entryVideoWithoutTime, hasEntryInput, initialPasteInput, MAX_ENTRY_INPUT_LENGTH } from "@/lib/create-entry";
 import { parseYouTubeInput } from "@/lib/youtube";
 import { useCanReadClipboard } from "./browser";
 import { ClipEditor } from "./clip-editor";
@@ -21,6 +21,8 @@ export function CreateClip() {
   const [input, setInput] = useState(() => initialPasteInput(entry));
   // Opening the keyboard on top of a pre-filled editor would hide it, so only focus an empty page.
   const [autoFocus] = useState(() => !hasEntryInput(entry));
+  // A shared link with no time: the editor asks where the sender paused (and takes the focus).
+  const [noTimeVideoId] = useState(() => entryVideoWithoutTime(entry));
   const [clipboardError, setClipboardError] = useState(false);
   const canPaste = useCanReadClipboard();
 
@@ -92,6 +94,7 @@ export function CreateClip() {
           key={`${parsed.videoId}:${parsed.startSeconds ?? 0}`}
           videoId={parsed.videoId}
           initialStart={parsed.startSeconds ?? 0}
+          askPauseTime={parsed.videoId === noTimeVideoId && !parsed.startSeconds}
         />
       ) : null}
 

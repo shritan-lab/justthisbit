@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_ENTRY_INPUT_LENGTH, hasEntryInput, initialPasteInput } from "./create-entry";
+import { MAX_ENTRY_INPUT_LENGTH, entryVideoWithoutTime, hasEntryInput, initialPasteInput } from "./create-entry";
 import { parseYouTubeInput } from "./youtube";
 
 const ID = "UF8uR6Z6KLc";
@@ -53,6 +53,33 @@ describe("initialPasteInput", () => {
 
   it("never throws on odd values", () => {
     expect(initialPasteInput({ url: 42 as unknown as string })).toBe("");
+  });
+});
+
+describe("entryVideoWithoutTime", () => {
+  it("is the video id for a pre-filled link with no time", () => {
+    expect(entryVideoWithoutTime({ v: ID })).toBe(ID);
+    expect(entryVideoWithoutTime({ url: `https://youtu.be/${ID}` })).toBe(ID);
+    expect(entryVideoWithoutTime({ url: `Check this out https://youtu.be/${ID}?si=abc` })).toBe(ID);
+  });
+
+  it("treats a zero or junk time as no time", () => {
+    expect(entryVideoWithoutTime({ v: ID, t: "0" })).toBe(ID);
+    expect(entryVideoWithoutTime({ v: ID, t: "junk" })).toBe(ID);
+    expect(entryVideoWithoutTime({ url: `https://youtu.be/${ID}?t=0` })).toBe(ID);
+  });
+
+  it("is null when the link has a time", () => {
+    expect(entryVideoWithoutTime({ v: ID, t: "840" })).toBeNull();
+    expect(entryVideoWithoutTime({ url: `https://youtu.be/${ID}?si=abc&t=840` })).toBeNull();
+    expect(entryVideoWithoutTime({ url: `https://www.youtube.com/watch?v=${ID}&t=1m30s` })).toBeNull();
+  });
+
+  it("is null with nothing to pre-fill or no video", () => {
+    expect(entryVideoWithoutTime({})).toBeNull();
+    expect(entryVideoWithoutTime({ url: "   " })).toBeNull();
+    expect(entryVideoWithoutTime({ url: "https://example.com/nope" })).toBeNull();
+    expect(entryVideoWithoutTime({ v: "short" })).toBeNull();
   });
 });
 

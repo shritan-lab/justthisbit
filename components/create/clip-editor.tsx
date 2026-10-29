@@ -8,6 +8,7 @@ import { SITE_URL } from "@/lib/site";
 import { formatClock, parseTimeInput } from "@/lib/time";
 import { isEmbedBlockedCode, youtubeThumbnailUrl } from "@/lib/youtube-embed";
 import { ClipOutput } from "./clip-output";
+import { PauseTimeField } from "./pause-time-field";
 import { errorText, fieldLabel, primaryButton, smallButton, textField } from "./styles";
 import { TimeRow } from "./time-row";
 import { useVideoMeta } from "./use-video-meta";
@@ -46,9 +47,11 @@ function limitNote(value: string): string {
 type Props = {
   videoId: string;
   initialStart: number;
+  /** The shared link had no time, so ask where the sender paused. */
+  askPauseTime?: boolean;
 };
 
-export function ClipEditor({ videoId, initialStart }: Props) {
+export function ClipEditor({ videoId, initialStart, askPauseTime = false }: Props) {
   const [startText, setStartText] = useState(() => formatClock(initialStart));
   const [endText, setEndText] = useState(() => formatClock(initialStart + DEFAULT_LENGTH_SECONDS));
   // While set, the end follows the start at this length. Editing the end by hand clears it.
@@ -63,10 +66,19 @@ export function ClipEditor({ videoId, initialStart }: Props) {
 
   const playerStart = draft.ok ? draft.clip.start : (start ?? initialStart);
   const playerEnd = draft.ok ? draft.clip.end : playerStart + DEFAULT_LENGTH_SECONDS;
-  const { containerRef, status, error, replay, getCurrentTime } = useClipPlayer(videoId, playerStart, playerEnd, {
+  const { containerRef, status, error, replay, cue, getCurrentTime } = useClipPlayer(videoId, playerStart, playerEnd, {
     endEnforcement: "preview",
   });
   const ready = status === "ready";
+
+  // Where the sender said they paused. The player is cued there once typing settles,
+  // so "1:05:30" does not cue at 1:00, 1:05 and so on along the way.
+  const [pauseCue, setPauseCue] = useState<number | null>(null);
+  useEffect(() => {
+    if (!ready || pauseCue === null) return;
+    const timer = window.setTimeout(() => cue(pauseCue), 300);
+    return () => window.clearTimeout(timer);
+  }, [ready, pauseCue, cue]);
   const failed = status === "error";
   const embedBlocked = error?.kind === "player" && isEmbedBlockedCode(error.code);
 
@@ -83,6 +95,14 @@ export function ClipEditor({ videoId, initialStart }: Props) {
   };
   const setStartSeconds = (seconds: number) => changeStart(formatClock(Math.max(0, seconds)));
   const setEndSeconds = (seconds: number) => changeEnd(formatClock(Math.max(0, seconds)));
+
+  // The same result as a link that carried this time: start here, end 30 seconds later.
+  const setPauseTime = (seconds: number) => {
+    setStartText(formatClock(seconds));
+    setEndText(formatClock(seconds + DEFAULT_LENGTH_SECONDS));
+    setFollowLength(DEFAULT_LENGTH_SECONDS);
+    setPauseCue(seconds);
+  };
 
   const chooseLength = (seconds: number) => {
     if (start === null) return;
@@ -133,6 +153,8 @@ export function ClipEditor({ videoId, initialStart }: Props) {
       data-player-status={status}
       className="flex flex-col gap-6"
     >
+      {askPauseTime ? <PauseTimeField onTime={setPauseTime} /> : null}
+
       <div className="flex flex-col gap-3">
         {/* The player box. Nothing is ever placed on top of it. */}
         <div

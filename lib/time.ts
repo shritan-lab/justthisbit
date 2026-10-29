@@ -40,6 +40,17 @@ export function parseTimeInput(input: string): number | null {
   return null;
 }
 
+const KEYPAD_SEPARATOR_RE = /^\s*\d+(?:[.,]\d+){1,2}\s*$/;
+
+/**
+ * Like parseTimeInput, but also takes "." or "," between the parts ("5.02", "1,05,30"),
+ * because phone number pads have no colon key. Everything else is parseTimeInput's job.
+ */
+export function parseKeypadTimeInput(input: string): number | null {
+  if (typeof input !== "string") return null;
+  return parseTimeInput(KEYPAD_SEPARATOR_RE.test(input) ? input.replace(/[.,]/g, ":") : input);
+}
+
 function clampSeconds(seconds: number): number {
   if (!Number.isFinite(seconds) || seconds < 0) return 0;
   return Math.floor(seconds);

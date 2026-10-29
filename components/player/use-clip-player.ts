@@ -46,6 +46,8 @@ export type ClipPlayer = {
   clipEnded: boolean;
   /** Seeks to `start` and plays. */
   replay: () => void;
+  /** Moves the stopped player to `seconds` without playing. Does nothing until the player is ready. */
+  cue: (seconds: number) => void;
   getCurrentTime: () => number | null;
 };
 
@@ -251,6 +253,23 @@ export function useClipPlayer(
     p.playVideo();
   }, []);
 
+  // cueVideoById, not seekTo: seekTo starts playback when the video is cued, and we never autoplay.
+  const cue = useCallback(
+    (seconds: number) => {
+      const p = playerRef.current;
+      if (!p) return;
+      lastSampleRef.current = null;
+      previewArmedRef.current = false;
+      setClipEnded(false);
+      try {
+        p.cueVideoById({ videoId, startSeconds: Math.max(0, Math.floor(seconds)) });
+      } catch {
+        // The player is gone. The next render makes a new one.
+      }
+    },
+    [videoId],
+  );
+
   const getCurrentTime = useCallback(() => {
     try {
       return playerRef.current?.getCurrentTime() ?? null;
@@ -259,5 +278,5 @@ export function useClipPlayer(
     }
   }, []);
 
-  return { containerRef, status, error, isPlaying, clipEnded, replay, getCurrentTime };
+  return { containerRef, status, error, isPlaying, clipEnded, replay, cue, getCurrentTime };
 }
