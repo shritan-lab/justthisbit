@@ -28,6 +28,11 @@ export function noteLength(note: string): number {
   return Array.from(note).length;
 }
 
+/** Cuts a note being typed down to MAX_NOTE_LENGTH characters, counted the same way as noteLength. */
+export function limitNote(note: string): string {
+  return noteLength(note) > MAX_NOTE_LENGTH ? Array.from(note).slice(0, MAX_NOTE_LENGTH).join("") : note;
+}
+
 function cleanNote(note: string | undefined): string | undefined {
   const trimmed = note?.trim();
   return trimmed ? trimmed : undefined;

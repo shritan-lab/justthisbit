@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, useState } from "react";
 import { useClipPlayer } from "@/components/player/use-clip-player";
-import { MAX_NOTE_LENGTH, buildClipUrl, noteLength } from "@/lib/clip";
+import { MAX_NOTE_LENGTH, buildClipUrl, limitNote, noteLength } from "@/lib/clip";
 import { DRAFT_MESSAGES, checkClipDraft, problemPlace } from "@/lib/clip-draft";
 import { SITE_URL } from "@/lib/site";
 import { formatClock, parseTimeInput } from "@/lib/time";
@@ -37,11 +37,6 @@ function isTypingTarget(target: EventTarget | null): boolean {
     target instanceof HTMLSelectElement ||
     target.isContentEditable
   );
-}
-
-/** Code points, so an emoji counts as one, the same way the clip page counts. */
-function limitNote(value: string): string {
-  return noteLength(value) > MAX_NOTE_LENGTH ? Array.from(value).slice(0, MAX_NOTE_LENGTH).join("") : value;
 }
 
 type Props = {

@@ -22,6 +22,8 @@ Same as Android, but the entry point is an iOS Shortcut named "Clip it" in the s
 ### 2.3 Sender on desktop
 A bookmarklet ("Clip this") on the bookmarks bar. On a YouTube watch page it opens the create page with the video and the current playback time pre-filled (see 6.3). Fallback: paste the link.
 
+Chrome users can instead load the unpublished extension (see 6.4) and make the link right on YouTube without leaving the video.
+
 ### 2.4 Receiver (any device)
 1. Sees a WhatsApp/iMessage preview: video thumbnail, title "▶ 0:42 clip · {video title}", and the note if the sender added one.
 2. Opens the link in the browser. Sees the note, the clip length, and the YouTube player cued to the start.
@@ -169,6 +171,19 @@ A `javascript:` link on `/install` that:
 - Shows `alert("Open a YouTube video first")` on non-video pages.
 The site origin is injected at build time from the site URL.
 
+### 6.4 Desktop: Chrome extension (Phase 4b, unpublished)
+A Manifest V3 extension in `extension/`, loaded by hand with **Load unpacked** in developer mode. It is never published (the Chrome Web Store fee is out of scope, see 9).
+
+- **Clip button:** on `youtube.com` watch, `/live/` and `/shorts/` pages, a "Clip" button in the action row next to Like and Share. Never drawn on top of the video. On Shorts, if the action bar overlaps the video (narrow windows), no button is placed.
+- **Single-page app:** placement re-runs on every `yt-navigate-finish` event, with a MutationObserver as backup. Placement is idempotent: never two buttons. Navigating to another video closes the panel.
+- **Panel:** opens below the action row on watch pages, and beside the video on Shorts (only where it fits without covering the video). Start and End, each with a time field and **Set to now** (reads the page's video time), length chips +15s, +30s, +1m, +2m, an optional note (140 characters), a live length readout, the create page's validation messages, **Copy link** and **Open**. When it opens, start = current time (rounded down) and end = start + 30s.
+- **Keyboard:** Alt+Shift+S sets start to now, Alt+Shift+E sets end to now, Alt+Shift+C copies the link. Ignored while typing in a field. Shown as a hint in the panel.
+- **Popup fallback:** clicking the toolbar icon on a YouTube video opens the same panel in a popup, for when YouTube changes its layout and the in-page button can't be placed. It asks the tab's content script for the video and time, and falls back to the tab URL (via `activeTab`) when the content script is not there yet.
+- **Links:** always `https://justthisbit.vercel.app/c/{videoId}/{start}-{end}?n={note}`. Built with `lib/clip.ts`, `lib/clip-draft.ts`, `lib/time.ts` and `lib/youtube.ts`, bundled in, never copied.
+- **Permissions:** content script on `https://www.youtube.com/*` only, `clipboardWrite`, `activeTab`. No host permissions, no background worker, no remote code, no analytics, no network requests.
+- **Build:** `npm run ext:build` bundles with Vite into `extension/dist` (git-ignored). Icons come from `app/icon.svg` via `npm run icons`. The Next.js build, typecheck and Vercel deploy ignore `extension/`.
+- **Tests:** unit tests in `extension/src/*.test.ts`. A Playwright project (`extension`) loads `extension/dist` into Chromium against a fake youtube.com page and checks placement, navigation, Set to now, copying, shortcuts, Shorts and the popup.
+
 ## 7. Non-functional requirements
 - **Security headers** (in `next.config`): `Referrer-Policy: strict-origin-when-cross-origin`, `X-Content-Type-Options: nosniff`, `Permissions-Policy` disabling camera, microphone, geolocation.
 - **Performance:** viewer page JS kept small. The player script loads only on pages that need it. Lighthouse mobile performance 90+ on the viewer page.
@@ -209,7 +224,7 @@ Mock the YouTube IFrame API by intercepting `https://www.youtube.com/iframe_api`
 | Feature | Why deferred |
 |---|---|
 | Custom domain | Costs money. `*.vercel.app` works fine for previews. |
-| Chrome Web Store extension | $5 developer fee. The bookmarklet covers desktop for free. |
+| Chrome Web Store listing | $5 developer fee. The bookmarklet covers desktop for free, and the extension (6.4) is loaded unpacked. |
 | Native iOS app with share extension | $99/yr Apple developer fee. The Shortcut covers iPhone for free. |
 | Short links, view counts, "your friend watched it" | Need a database. Revisit if people use the product. |
 | Accounts, clip history across devices | Same. |

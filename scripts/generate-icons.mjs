@@ -5,8 +5,9 @@
 //   public/icon-maskable-512.png                  manifest icon ("maskable"), mark shrunk into the safe zone
 //   public/apple-touch-icon.png                   180px, iOS home screen
 //   app/favicon.ico                               16, 32 and 48px for old browsers and tabs
+//   extension/icons/icon-{16,32,48,128}.png       Chrome extension toolbar and extensions page
 
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
 
@@ -32,6 +33,31 @@ async function render(size, scale = 1) {
   );
   await page.locator("img").evaluate((img) => img.decode());
   return page.screenshot({ clip: { x: 0, y: 0, width: size, height: size } });
+}
+
+/**
+ * A PNG of the icon at `size`, drawn on a canvas. Used for sizes below Chromium's minimum
+ * viewport width, where render() would crop the icon.
+ */
+async function renderSmall(size) {
+  const dataUrl64 = await page.evaluate(
+    async ({ src, size, base }) => {
+      const img = new Image();
+      img.src = src;
+      await img.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = base;
+      ctx.fillRect(0, 0, size, size);
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, 0, 0, size, size);
+      return canvas.toDataURL("image/png");
+    },
+    { src: dataUrl, size, base: BASE },
+  );
+  return Buffer.from(dataUrl64.split(",")[1], "base64");
 }
 
 /** Raw RGBA pixels of the icon at `size`, drawn on a canvas. */
@@ -105,6 +131,7 @@ const outputs = [
   ["public/icon-512.png", await render(512)],
   ["public/icon-maskable-512.png", await render(512, MASKABLE_SCALE)],
   ["public/apple-touch-icon.png", await render(180)],
+  ...(await Promise.all([16, 32, 48, 128].map(async (size) => [`extension/icons/icon-${size}.png`, await renderSmall(size)]))),
 ];
 
 const ico = toIco(
@@ -114,6 +141,7 @@ outputs.push(["app/favicon.ico", ico]);
 
 await browser.close();
 
+await mkdir(`${root}extension/icons`, { recursive: true });
 for (const [path, data] of outputs) {
   await writeFile(`${root}${path}`, data);
   console.log(`wrote ${path} (${data.length} bytes)`);

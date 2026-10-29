@@ -4,6 +4,7 @@ import { E2E_PRODUCTION_HOST } from "./e2e/support/fixtures";
 const PORT = 3100;
 const OEMBED_STUB_PORT = 3101;
 const baseURL = `http://localhost:${PORT}`;
+const EXTENSION_SPEC = /extension\.spec\.ts$/;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -15,10 +16,13 @@ export default defineConfig({
     baseURL,
     trace: "on-first-retry",
   },
-  // Chromium only. "mobile" uses a Chromium-based phone profile.
+  // Chromium only. "mobile" uses a Chromium-based phone profile. "extension" loads the built
+  // Chrome extension (extension/dist) into its own Chromium, so it runs once, not per device.
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile", use: { ...devices["Pixel 7"] } },
+    { name: "desktop", use: { ...devices["Desktop Chrome"] }, testIgnore: EXTENSION_SPEC },
+    { name: "mobile", use: { ...devices["Pixel 7"] }, testIgnore: EXTENSION_SPEC },
+    // Each test starts a full Chromium with the extension, so two at a time keeps them fast.
+    { name: "extension", testMatch: EXTENSION_SPEC, workers: 2 },
   ],
   webServer: [
     {

@@ -27,6 +27,9 @@
 # production
 /build
 
+# built Chrome extension (npm run ext:build)
+/extension/dist/
+
 # misc
 .DS_Store
 *.pem

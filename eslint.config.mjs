@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     "test-results/**",
     "playwright-report/**",
     "blob-report/**",
+    // Built Chrome extension (npm run ext:build).
+    "extension/dist/**",
   ]),
 ]);
 

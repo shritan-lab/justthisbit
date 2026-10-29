@@ -5,6 +5,7 @@ import {
   buildClipPath,
   buildClipUrl,
   isClipUrl,
+  limitNote,
   matchClipPath,
   noteLength,
   parseClipParams,
@@ -271,5 +272,28 @@ describe("isClipUrl", () => {
     expect(isClipUrl("not a url")).toBe(false);
     expect(isClipUrl(42)).toBe(false);
     expect(isClipUrl(`https://x.test/c/${ID}/1-2?n=${"a".repeat(141)}`)).toBe(false);
+  });
+});
+
+describe("limitNote", () => {
+  it("keeps notes at or under the limit as they are", () => {
+    expect(limitNote("")).toBe("");
+    expect(limitNote("watch his face")).toBe("watch his face");
+    expect(limitNote("a".repeat(MAX_NOTE_LENGTH))).toBe("a".repeat(MAX_NOTE_LENGTH));
+  });
+
+  it("cuts longer notes to the limit", () => {
+    expect(limitNote("a".repeat(MAX_NOTE_LENGTH + 5))).toBe("a".repeat(MAX_NOTE_LENGTH));
+  });
+
+  it("counts an emoji as one character and never splits it", () => {
+    const note = "😀".repeat(MAX_NOTE_LENGTH + 1);
+    const cut = limitNote(note);
+    expect(noteLength(cut)).toBe(MAX_NOTE_LENGTH);
+    expect(cut).toBe("😀".repeat(MAX_NOTE_LENGTH));
+  });
+
+  it("keeps newlines and leaves trimming to buildClipPath", () => {
+    expect(limitNote(" a\nb ")).toBe(" a\nb ");
   });
 });
