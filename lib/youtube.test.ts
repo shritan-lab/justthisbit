@@ -217,3 +217,70 @@ describe("parseYouTubeInput: Android share text from the YouTube app", () => {
     });
   });
 });
+
+// SPEC 4.1, reviewed format by format in Phase 5.
+describe("parseYouTubeInput: SPEC 4.1 coverage", () => {
+  it.each([
+    // m.youtube.com with &t= in every time form
+    ["https://m.youtube.com/watch?v=dQw4w9WgXcQ&t=90", 90],
+    ["https://m.youtube.com/watch?v=dQw4w9WgXcQ&t=90s", 90],
+    ["https://m.youtube.com/watch?v=dQw4w9WgXcQ&t=1m30s", 90],
+    ["https://m.youtube.com/watch?v=dQw4w9WgXcQ&t=1h2m3s", 3723],
+    ["https://m.youtube.com/watch?v=dQw4w9WgXcQ&si=abc&t=42&feature=share", 42],
+    ["m.youtube.com/watch?v=dQw4w9WgXcQ&t=15", 15],
+    // youtube.com/live with ?si=
+    ["https://www.youtube.com/live/dQw4w9WgXcQ?si=AbC-123_xyz&t=600", 600],
+    ["https://youtube.com/live/dQw4w9WgXcQ?si=AbC-123_xyz&t=1h", 3600],
+    ["https://m.youtube.com/live/dQw4w9WgXcQ?t=30&si=AbC-123_xyz", 30],
+    // music.youtube.com
+    ["https://music.youtube.com/watch?v=dQw4w9WgXcQ&list=RDAMVM&t=45", 45],
+    // start= in every time form
+    ["https://www.youtube.com/embed/dQw4w9WgXcQ?start=90s", 90],
+    ["https://www.youtube.com/embed/dQw4w9WgXcQ?start=1m30s", 90],
+    ["https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=1h2m3s", 3723],
+    // youtu.be with every time form
+    ["https://youtu.be/dQw4w9WgXcQ?t=1h2m3s", 3723],
+    ["https://youtu.be/dQw4w9WgXcQ?feature=shared&t=90s", 90],
+    // shorts, /v/ with params
+    ["https://www.youtube.com/shorts/dQw4w9WgXcQ?si=abc&t=3", 3],
+    ["https://www.youtube.com/v/dQw4w9WgXcQ?start=20&version=3", 20],
+  ])("%s -> %i", (input, start) => {
+    expect(parseYouTubeInput(input)).toEqual({ videoId: ID, startSeconds: start });
+  });
+
+  it.each([
+    ["https://m.youtube.com/live/dQw4w9WgXcQ?si=XyZ123"],
+    ["youtube.com/live/dQw4w9WgXcQ?si=XyZ123"],
+    ["music.youtube.com/watch?v=dQw4w9WgXcQ"],
+    ["youtube-nocookie.com/embed/dQw4w9WgXcQ"],
+    ["https://www.youtube.com/watch?pp=ygUEdGVzdA%3D%3D&index=2&list=PL123&si=x&feature=youtu.be&v=dQw4w9WgXcQ"],
+  ])("%s", (input) => {
+    expect(parseYouTubeInput(input)).toEqual({ videoId: ID });
+  });
+
+  it("Android share text with an m.youtube.com link and a time", () => {
+    expect(parseYouTubeInput(`Watch this! https://m.youtube.com/watch?v=${ID}&t=1m30s`)).toEqual({
+      videoId: ID,
+      startSeconds: 90,
+    });
+  });
+
+  it("live stream replay shared with words around it", () => {
+    expect(parseYouTubeInput(`The best bit https://youtube.com/live/${ID}?si=AbC-123_xyz&t=5025 lol`)).toEqual({
+      videoId: ID,
+      startSeconds: 5025,
+    });
+  });
+
+  it.each([
+    ["https://www.youtube.com/embed/videoseries?list=PL1234567890"],
+    ["https://www.youtube-nocookie.com/embed/videoseries?list=PL1234567890"],
+    ["https://m.youtube.com/playlist?list=PL1234567890"],
+    ["https://music.youtube.com/playlist?list=PL1234567890"],
+    ["https://www.youtube.com/live/"],
+    ["https://www.youtube.com/watch?v="],
+    ["https://m.youtube.com/@SomeChannel"],
+  ])("%s is not a video", (input) => {
+    expect(parseYouTubeInput(input)).toBeNull();
+  });
+});

@@ -52,7 +52,7 @@ export function DesktopBookmarklet({ bookmarklet }: { bookmarklet: string }) {
             value={bookmarklet}
             rows={3}
             onFocus={(e) => e.currentTarget.select()}
-            className="w-full resize-none rounded-xl border border-line bg-base p-3 font-mono text-xs text-ink"
+            className="w-full resize-none rounded-xl border border-field bg-canvas p-3 font-mono text-xs text-ink"
           />
           <CopyButton text={bookmarklet} label="Copy the code" />
         </div>

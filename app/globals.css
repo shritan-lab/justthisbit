@@ -1,10 +1,14 @@
 @import "tailwindcss";
 
-/* Design tokens. Use them as Tailwind classes: bg-base, text-ink, text-accent, text-muted, border-line. */
+/* Design tokens. Use them as Tailwind classes: bg-canvas, text-ink, text-accent, text-muted, border-line.
+   The base color is called "canvas", not "base": a --color-base token would make Tailwind's
+   text-base (the 16px font size) also set the text color to #080808. */
 @theme {
-  --color-base: #080808;
+  --color-canvas: #080808;
   --color-surface: #141414;
   --color-line: #262626;
+  /* Text field outlines. 3:1 against base and surface, so fields stand out (WCAG 1.4.11). */
+  --color-field: #6b6b6b;
   --color-ink: #f2efe9;
   --color-muted: #9a958d;
   --color-accent: #ff4d1c;
@@ -18,13 +22,13 @@
 }
 
 html {
-  background-color: var(--color-base);
+  background-color: var(--color-canvas);
   color: var(--color-ink);
   -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background-color: var(--color-base);
+  background-color: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
 }

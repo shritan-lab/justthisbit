@@ -9,6 +9,8 @@ export const STYLES = `
   --base: #080808;
   --surface: #141414;
   --line: #2e2e2e;
+  /* Text field outlines: 3:1 against the panel (WCAG 1.4.11). */
+  --field: #6b6b6b;
   --ink: #f2efe9;
   --muted: #a39e96;
   --accent: #ff4d1c;
@@ -24,7 +26,8 @@ export const STYLES = `
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
-.jtb :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* .jtb:focus-visible is the Clip button itself, which carries the .jtb class. */
+.jtb:focus-visible, .jtb :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* The Clip button in YouTube's action row. 36px tall to sit level with Like and Share. */
 .jtb-clip {
@@ -36,6 +39,10 @@ export const STYLES = `
   cursor: pointer; white-space: nowrap;
 }
 .jtb-clip:hover { border-color: var(--accent); }
+/* 36px tall to match YouTube's row, but the tap area is 44px: this invisible layer adds 4px above
+   and below. It is placed from inside the 1px border, hence 5px. */
+.jtb-clip:not(.is-shorts) { position: relative; }
+.jtb-clip:not(.is-shorts)::before { content: ""; position: absolute; inset: -5px -1px; }
 .jtb-clip[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
 .jtb-clip svg { width: 20px; height: 20px; flex: none; }
 
@@ -81,10 +88,10 @@ export const STYLES = `
 .jtb-row { display: flex; gap: 8px; }
 .jtb-input, .jtb-note {
   width: 100%; min-width: 0; min-height: 44px; padding: 0 12px;
-  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface); border: 1px solid var(--field); border-radius: 10px;
   font-size: 16px; font-variant-numeric: tabular-nums;
 }
-.jtb-input:hover, .jtb-note:hover { border-color: #4a4a4a; }
+.jtb-input:hover, .jtb-note:hover { border-color: var(--muted); }
 .jtb-input[aria-invalid="true"] { border-color: var(--accent); }
 .jtb-note { min-height: 64px; padding: 10px 12px; resize: vertical; font-size: 14px; line-height: 1.35; }
 .jtb-note::placeholder { color: var(--muted); }

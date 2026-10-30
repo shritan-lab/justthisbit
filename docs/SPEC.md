@@ -1,5 +1,7 @@
 # Just This Bit: Product and Technical Spec (v1)
 
+Updated in Phase 5 to match what is live at https://justthisbit.vercel.app.
+
 ## 1. Goal
 Share a specific part of a long YouTube video as one link. The friend opens it, taps play, watches only that part, and is done.
 
@@ -12,7 +14,7 @@ v1 is a personal tool that must work reliably every time. It costs nothing to ru
 ### 2.1 Sender on Android (main flow)
 1. Watching in the YouTube app. Taps **Share**. Optionally turns on the timestamp toggle so the link starts at the current moment.
 2. Picks **Just This Bit** in the share sheet (installed as a web app, see 6.1).
-3. The create page opens with the video loaded and the start time pre-filled from `?t=` if present.
+3. The create page opens with the video loaded and the start time pre-filled from `?t=` if present. If the shared link has no time (the timestamp toggle was off), a **Where did you pause?** field appears above the player, focused, with a number keypad (see 5.2).
 4. Taps a duration chip (+15s, +30s, +1m, +2m) or sets the end manually. Optionally previews. Optionally adds a note.
 5. Taps **Share** (native share sheet) or **WhatsApp**. Done.
 
@@ -66,10 +68,12 @@ Must handle:
 - URLs surrounded by other text, e.g. Android shares like `Check this out https://youtu.be/ID?si=abc&t=90`
 - Missing `https://`
 - Our own clip links (`/c/ID/90-132`): return the videoId and start so a sender can re-edit
-- Returns `null` for anything else (playlists without a video, channels, random text)
+- Returns `null` for anything else (playlists without a video, including embedded playlists at `/embed/videoseries?list=...`, channels, random text)
+- Never throws. Input is cut at 4000 characters before parsing.
 
 ### 4.2 `lib/time.ts`
 - `parseTimeInput(s)`: accepts `90`, `1:30`, `01:02:03`, `1m30s`, `1h2m3s`. Returns seconds or `null`.
+- `parseKeypadTimeInput(s)`: the same, plus `.` or `,` between parts (`5.02`, `1,05,30`), because phone number pads have no colon key.
 - `formatClock(seconds)`: `0:42`, `1:30`, `1:02:03`.
 - `formatDuration(seconds)`: `42s`, `1m 30s`, `1h 2m`.
 
@@ -82,6 +86,13 @@ Must handle:
 - `getVideoMeta(videoId)`: fetches `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={id}&format=json`.
 - 3 second timeout. Cached by Next fetch for 24 hours.
 - Returns `{ title, authorName }` or `null`. Never throws. The page must render fine when it returns `null`.
+- `GET /api/video/{videoId}` gives the create page the same lookup (YouTube's oEmbed sends no CORS headers). Zod-validated id, 400 on a bad id, `{}` when unknown, cached for an hour in the browser and a day at the edge.
+
+### 4.5 Other shared libraries
+- `lib/clip-draft.ts`: validates the editor's start, end and note text and returns the messages that the create page and the extension both show.
+- `lib/recent-clips.ts`: the recent clips list in `localStorage` (5.2). Every stored entry is checked with Zod again before use.
+- `lib/analytics.ts`: strips private query params from analytics events (7).
+- `lib/not-found.ts`: picks the 404 message (5.5).
 
 ## 5. Pages
 
@@ -93,7 +104,8 @@ Server component for metadata, client component for the player.
 - `description`: the note if present, else `From {start} to {end} of "{title}" by {author}`.
 - `og:image`: `https://i.ytimg.com/vi/{id}/hqdefault.jpg` (always exists, small, loads fast in previews), with `og:image:width` 480 and `og:image:height` 360.
 - `og:type` `video.other`, `twitter:card` `summary_large_image`, `metadataBase` from the site URL.
-- Invalid params: render a friendly "This clip link looks broken" page with a link to the create page, HTTP 404, and `noindex`.
+- Invalid params: render a friendly "This clip link looks broken" page with a link to the create page, HTTP 404, and `noindex`. `proxy.ts` validates the link before the page renders (the page streams, so it could no longer change its status) and rewrites invalid links to an unmatched path, which renders `app/not-found.tsx` (5.5).
+- Search bots and link-preview bots get the metadata in `<head>`. Regular browsers get it streamed with the page (Next.js streaming metadata).
 
 **Player behavior:**
 - Load the IFrame API script once (`https://www.youtube.com/iframe_api`) with a shared loader that handles multiple mounts.
@@ -112,10 +124,14 @@ Server component for metadata, client component for the player.
 
 **Layout (mobile first):** note (if any) as the headline, then "{0:42} clip · starts at 1:30", then the 16:9 player, then the end panel slot, then a small "Make your own clip" link and the source video title and channel.
 
+**Loading:** the page preconnects to `www.youtube.com` and `i.ytimg.com`. The video thumbnail sits underneath the player inside the 16:9 box, so the box shows the video while YouTube loads. The player covers it as soon as it appears. Nothing is drawn on top of the player.
+
 ### 5.2 Create: `/`
 Client page.
 
-**Input:** a single paste field, autofocused, with a Paste button (uses `navigator.clipboard.readText()` when available, hidden otherwise). Pre-filled from `?url=` or `?v=&t=`. Parses live with `parseYouTubeInput`. Clear inline error for invalid input.
+**Input:** a single paste field, autofocused, with a Paste button (uses `navigator.clipboard.readText()` when available, hidden otherwise). Pre-filled from `?url=` or `?v=&t=` (a valid `v` shows as a `youtu.be` link in the field; input is cut at 2000 characters). Not autofocused when pre-filled, so the phone keyboard does not cover the editor. Parses live with `parseYouTubeInput`. Clear inline error for invalid input.
+
+**Shared without a time:** when the page opens from `?v=` or `?url=` with a video but no time (YouTube's "Start at" switch was off), a **Where did you pause?** field appears above the player and takes the focus. It opens the number keypad (`inputmode="decimal"`) and reads the time with `parseKeypadTimeInput`, so `5:02`, `5.02` and `302` all work. Each valid time sets start to it and end to 30 seconds later, and cues the player there once typing settles (300ms). The error ("Time not understood. Try 5:02 or 302.") waits for Enter or leaving the field. A tip says to turn on "Start at" in YouTube's Share menu next time.
 
 **Editor (after a valid video loads):**
 - YouTube player cued at the start time.
@@ -136,7 +152,7 @@ Client page.
 - **Copy** button: `navigator.clipboard.writeText` with a hidden-textarea fallback. Shows "Copied" for 2 seconds.
 - **Open** link to test the clip page.
 
-**Recent clips:** last 20 created clips stored in `localStorage` on this device (title, range, url). Shown below the editor with copy buttons and a clear-all button. Wrapped in try/catch.
+**Recent clips:** last 20 created clips stored in `localStorage` on this device (title, range, url, note). A clip is saved when the sender taps Share, WhatsApp, Copy or Open. Shown below the editor with Copy and Open buttons and a clear-all button. Wrapped in try/catch, and the list still works for the visit when storage is blocked. A link saved before the video title has loaded is saved as "YouTube video" and updated as soon as the title arrives.
 
 ### 5.3 Share target handler: `/share`
 Receives Android share-sheet data (GET params `title`, `text`, `url`). Runs `parseYouTubeInput` on `url`, then `text`, then `title`. On success, redirect to `/?v={id}&t={start}`. On failure, redirect to `/?url={raw}` so the create page shows the parse error with the raw input.
@@ -146,6 +162,12 @@ One page with three sections, auto-opening the section that matches the visitor'
 - **Android:** how to install the web app (browser menu, "Add to Home screen" / "Install app") and that it then appears in YouTube's share menu. Show a real install button when the `beforeinstallprompt` event is available.
 - **iPhone:** step-by-step to build the "Clip it" Shortcut (section 6.2) and a slot for an iCloud share link to the finished Shortcut (added manually later).
 - **Desktop:** the draggable "Clip this" bookmarklet (section 6.3).
+
+### 5.5 Not found and errors
+- **Unknown pages and broken clip links:** `app/not-found.tsx`, HTTP 404, `noindex`, fully server-rendered. The page is static (Next puts it in every page's payload, so it must not read the request). It holds both messages, and a small inline script picks one before the page paints: addresses under `/c` keep "This clip link looks broken" (5.1), anything else shows "This page doesn't exist" (the tab title follows once the page loads). Without JavaScript the clip message shows. Both have a **Make a clip** link to `/`.
+- **Errors:** `app/error.tsx` wraps every page under the root layout (`/`, `/install`, `/c/...`). `app/global-error.tsx` covers errors in the root layout itself. Both show "Something broke." with a **Reload** button (full page reload) and a **Make a clip** link (a plain link, so it works even if the client router broke).
+- **`/share`** has no page. If anything in it throws, it redirects to `/` instead of showing an error.
+- All of them share one look: accent bar, headline, one line of help, then the buttons.
 
 ## 6. Creation surfaces
 
@@ -181,22 +203,24 @@ A Manifest V3 extension in `extension/`, loaded by hand with **Load unpacked** i
 - **Popup fallback:** clicking the toolbar icon on a YouTube video opens the same panel in a popup, for when YouTube changes its layout and the in-page button can't be placed. It asks the tab's content script for the video and time, and falls back to the tab URL (via `activeTab`) when the content script is not there yet.
 - **Links:** always `https://justthisbit.vercel.app/c/{videoId}/{start}-{end}?n={note}`. Built with `lib/clip.ts`, `lib/clip-draft.ts`, `lib/time.ts` and `lib/youtube.ts`, bundled in, never copied.
 - **Permissions:** content script on `https://www.youtube.com/*` only, `clipboardWrite`, `activeTab`. No host permissions, no background worker, no remote code, no analytics, no network requests.
+- **UI:** everything lives in open shadow roots, so YouTube's styles never reach it. The panel has its own dark background. The Clip button is 36px tall to sit level with Like and Share, with an invisible 44px tap area. Every field has a label, every control has a visible focus ring, and the Open link uses `rel="noopener"` (no `noreferrer`).
 - **Build:** `npm run ext:build` bundles with Vite into `extension/dist` (git-ignored). Icons come from `app/icon.svg` via `npm run icons`. The Next.js build, typecheck and Vercel deploy ignore `extension/`.
 - **Tests:** unit tests in `extension/src/*.test.ts`. A Playwright project (`extension`) loads `extension/dist` into Chromium against a fake youtube.com page and checks placement, navigation, Set to now, copying, shortcuts, Shorts and the popup.
 
 ## 7. Non-functional requirements
 - **Security headers** (in `next.config`): `Referrer-Policy: strict-origin-when-cross-origin`, `X-Content-Type-Options: nosniff`, `Permissions-Policy` disabling camera, microphone, geolocation.
 - **Performance:** viewer page JS kept small. The player script loads only on pages that need it. Lighthouse mobile performance 90+ on the viewer page.
-- **Accessibility:** labeled inputs, visible focus states, 44px tap targets, all actions reachable by keyboard.
+- **Accessibility:** WCAG 2.1 AA. Labeled inputs, visible focus states (2px accent outline), 44px tap targets, all actions reachable by keyboard, one `h1` per page. Text contrast on our colors: ink on base 17:1, muted `#9a958d` on base 6.7:1 and on surface 6.2:1, accent on base 6.0:1, base on accent 6.0:1. Text field outlines use `#6b6b6b` (at least 3:1 against base and surface, WCAG 1.4.11). Checked by axe-core in the e2e suite (8.2).
 - **SEO:** clip pages `noindex` (they are personal shares). Home page indexable.
-- **Analytics:** Vercel Web Analytics (free tier) only. No other trackers, no cookie banner needed.
-- **Monitoring:** Vercel runtime logs. A client-side error boundary on every page with a "Something broke. Reload" message and a link to the create page.
+- **Analytics:** Vercel Web Analytics (free tier, `@vercel/analytics`) only. No other trackers, no cookie banner needed. Its `beforeSend` removes the `n` (note) and `url` (raw shared text) query params from every tracked URL, so nothing a person typed is recorded. Web Analytics has to be switched on in the Vercel project's Analytics tab.
+- **Monitoring:** Vercel runtime logs. A client-side error boundary on every page with a "Something broke. Reload" message and a link to the create page (5.5).
 
 ## 8. Testing
 
 ### 8.1 Unit (Vitest)
 - `lib/youtube.ts`: at least 40 cases across every format in 4.1, including junk input.
 - `lib/time.ts` and `lib/clip.ts`: all formats, boundaries (0, 1s, 3600s, 3601s), invalid values, note length and encoding (emoji, newlines, `&`, `#`, `?`).
+- Also unit-tested: `lib/analytics.ts`, `lib/recent-clips.ts` (including the late title update), `lib/clip-draft.ts`, `lib/create-entry.ts`, `lib/share-target.ts`, `lib/oembed.ts`, `lib/clip-metadata.ts`, `lib/bookmarklet.ts`, `lib/install.ts`, `lib/site.ts`, `lib/youtube-embed.ts`, `lib/clip-end.ts`, the `/share` route, and the extension (`extension/src/*.test.ts`).
 
 ### 8.2 End-to-end (Playwright, mobile and desktop viewports)
 Mock the YouTube IFrame API by intercepting `https://www.youtube.com/iframe_api` and serving a fake `YT.Player` whose clock can be driven from the test. This keeps tests deterministic and offline. Cover:
@@ -208,13 +232,19 @@ Mock the YouTube IFrame API by intercepting `https://www.youtube.com/iframe_api`
 - Timeout path: fake player never fires `onReady`, fallback appears after 10s (use fake timers).
 - Broken links: bad id, `end < start`, over 3600s all show the broken-link page with status 404.
 - `/share` redirects correctly for URL-in-`text` and URL-in-`url` inputs.
+- Errors: a component that throws on `/`, `/install` and `/c/...` shows the error page with Reload and a link to `/`, never a blank screen. Unknown pages answer 404 with "This page doesn't exist".
+- Accessibility: axe-core (WCAG 2.0, 2.1 and 2.2 A/AA rules) and a 44px tap target check on the create page (empty, invalid input, full editor with recent clips, "Where did you pause?"), `/install` with every section open, the viewer, its end panel and fallback card, and the broken-link, not-found and error pages. Every create page action is reached with Tab and shows a focus ring.
+- Extension (6.4): its own Playwright project.
 
 ### 8.3 Manual device checklist (run on the live URL before calling v1 done)
-- [ ] Android: install the web app, share from the YouTube app with and without the timestamp toggle, link created.
+- [x] Desktop: viewer plays the clip and stops at the end.
+- [x] Android: create page works.
+- [x] Android: install the web app, share from the YouTube app with and without the timestamp toggle, link created. "Where did you pause?" works.
 - [ ] Android WhatsApp: preview shows thumbnail and "▶ 0:42 clip · title". Opening plays and stops at the end.
 - [ ] iPhone: "Clip it" shortcut works from the YouTube app share sheet.
 - [ ] iPhone WhatsApp and iMessage: preview correct, playback stops at the end.
-- [ ] Desktop Chrome: bookmarklet pre-fills video and time.
+- [x] Desktop Chrome: bookmarklet pre-fills video and time.
+- [x] Desktop Chrome: the unpacked extension makes links on real youtube.com.
 - [ ] A music video with embedding disabled: sender sees the warning, receiver gets the "Open on YouTube at 1:30" fallback.
 - [ ] A deleted or private video link: fallback card, no black box.
 - [ ] A YouTube Shorts link and a live stream replay link both work.

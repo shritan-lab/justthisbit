@@ -49,11 +49,23 @@ export function ClipViewer({ videoId, start, end, note, watchUrl, thumbnailUrl, 
         )}
       </header>
 
-      {/* The player box. Nothing is ever placed on top of it. */}
+      {/* The player box. Nothing is ever placed on top of it. The thumbnail sits underneath the
+          player, so the box shows the video right away instead of an empty grey box while
+          YouTube loads. The player covers it once it appears. */}
       <div
         data-testid="player-frame"
         className={failed ? "hidden" : "relative aspect-video w-full overflow-hidden rounded-xl bg-surface"}
       >
+        {/* A plain img: next/image would route the thumbnail through the paid optimizer for no gain. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={thumbnailUrl}
+          alt=""
+          width={480}
+          height={360}
+          fetchPriority="high"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
         <div ref={containerRef} className="absolute inset-0" />
       </div>
 

@@ -95,7 +95,7 @@ export function createPanel({ doc, mode, videoId, readTime, onClose }: PanelOpti
   const noteError = h(doc, "p", { class: "jtb-error", role: "alert", hidden: true });
 
   const copyButton = h(doc, "button", { type: "button", class: "jtb-primary" }, ["Copy link"]);
-  const openLink = h(doc, "a", { class: "jtb-secondary", target: "_blank", rel: "noopener noreferrer" }, ["Open"]);
+  const openLink = h(doc, "a", { class: "jtb-secondary", target: "_blank", rel: "noopener" }, ["Open"]);
   const status = h(doc, "p", { class: "jtb-status", role: "status", "aria-live": "polite" });
 
   const closeButton = onClose

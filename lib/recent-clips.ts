@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MAX_NOTE_LENGTH, isClipUrl } from "./clip";
+import { MAX_NOTE_LENGTH, isClipUrl, matchClipPath } from "./clip";
 
 // Recent clips live in this device's localStorage only (SPEC 5.2). Every storage call can throw
 // (private mode, blocked site data, quota), so each one is wrapped and the app works without it.
@@ -7,6 +7,9 @@ import { MAX_NOTE_LENGTH, isClipUrl } from "./clip";
 export const RECENT_CLIPS_KEY = "jtb:recent-clips:v1";
 export const MAX_RECENT_CLIPS = 20;
 const MAX_TITLE_LENGTH = 200;
+
+/** Saved as the title when a link is shared before the video title has loaded. */
+export const UNTITLED_VIDEO = "YouTube video";
 
 export type RecentClip = {
   url: string;
@@ -84,4 +87,28 @@ export function addRecentClip(list: RecentClip[], clip: RecentClip): RecentClip[
   const [entry] = parseEntries([clip]);
   if (!entry) return list;
   return [entry, ...list.filter((c) => c.url !== entry.url)].slice(0, MAX_RECENT_CLIPS);
+}
+
+function videoIdOf(url: string): string | null {
+  try {
+    return matchClipPath(new URL(url).pathname)?.videoId ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Gives `title` to every saved clip of `videoId` that was saved as UNTITLED_VIDEO (the link was
+ * shared before the title loaded). Returns the same list when nothing changes.
+ */
+export function retitleRecentClips(list: RecentClip[], videoId: string, title: string): RecentClip[] {
+  const clean = title.trim().slice(0, MAX_TITLE_LENGTH);
+  if (!clean || clean === UNTITLED_VIDEO) return list;
+  let changed = false;
+  const next = list.map((clip) => {
+    if (clip.title !== UNTITLED_VIDEO || videoIdOf(clip.url) !== videoId) return clip;
+    changed = true;
+    return { ...clip, title: clean };
+  });
+  return changed ? next : list;
 }

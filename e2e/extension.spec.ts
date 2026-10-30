@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { chromium, expect, test as base, type BrowserContext, type Locator, type Page } from "@playwright/test";
@@ -265,5 +266,87 @@ test.describe("Chrome extension toolbar popup", () => {
     const popup = await context.newPage();
     await popup.goto(`chrome-extension://${extensionId}/popup.html`);
     await expect(popup.getByTestId("jtb-popup-message")).toHaveText("Open a YouTube video, then click this button again.");
+  });
+});
+
+test.describe("Chrome extension accessibility", () => {
+  const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
+
+  /** Controls inside our shadow roots smaller than 44 by 44 CSS pixels. */
+  async function smallTargets(page: Page, hostSelector: string): Promise<string[]> {
+    return page.evaluate((selector) => {
+      const out: string[] = [];
+      for (const host of document.querySelectorAll(selector)) {
+        const root = host.shadowRoot;
+        if (!root) continue;
+        for (const el of root.querySelectorAll<HTMLElement>("a[href], button, input, textarea")) {
+          const r = el.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) continue;
+          if (r.width < 43.5 || r.height < 43.5) out.push(`${el.tagName} "${el.textContent?.trim()}" ${Math.round(r.width)}x${Math.round(r.height)}`);
+        }
+      }
+      return out;
+    }, hostSelector);
+  }
+
+  test("the panel on a watch page passes axe and has 44px targets", async ({ page }) => {
+    await openWatch(page);
+
+    // The Clip button is drawn 36px tall to match YouTube's row, but taps 4px above and below it still hit it.
+    const hits = await page.evaluate(() => {
+      const root = document.querySelector("[data-jtb-clip-button]")!.shadowRoot!;
+      const button = root.querySelector("button")!;
+      const r = button.getBoundingClientRect();
+      const x = r.left + r.width / 2;
+      const hit = (y: number) => button.contains(root.elementFromPoint(x, y));
+      return { height: Math.round(r.height), above: hit(r.top - 3.9), below: hit(r.bottom + 3.9) };
+    });
+    expect(hits).toEqual({ height: 36, above: true, below: true });
+
+    await clipButton(page).click();
+    await expect(panel(page)).toBeVisible();
+    const results = await new AxeBuilder({ page }).include("[data-jtb-clip-panel]").include("[data-jtb-clip-button]").withTags(TAGS).analyze();
+    expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+    expect(await smallTargets(page, "[data-jtb-clip-panel]")).toEqual([]);
+  });
+
+  test("the Clip button and every panel control are reachable with the keyboard and show a focus ring", async ({ page }) => {
+    await openWatch(page);
+    // Tab from YouTube's Share button to Clip, and open the panel with Enter.
+    await page.getByRole("button", { name: "Share" }).focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Enter");
+    await expect(panel(page)).toBeVisible();
+    await page.getByRole("button", { name: "Share" }).focus();
+
+    const reached: string[] = [];
+    for (let i = 0; i < 16; i++) {
+      await page.keyboard.press("Tab");
+      const stop = await page.evaluate(() => {
+        let el: Element | null = document.activeElement;
+        while (el?.shadowRoot?.activeElement) el = el.shadowRoot.activeElement;
+        if (!(el instanceof HTMLElement)) return "";
+        // Only our own controls. YouTube's page draws its own focus styles.
+        const root = el.getRootNode();
+        if (!(root instanceof ShadowRoot) || !root.host.matches("[data-jtb-clip-button], [data-jtb-clip-panel]")) return "page";
+        const style = getComputedStyle(el);
+        const ring = style.outlineStyle !== "none" && parseFloat(style.outlineWidth) >= 2;
+        return `${ring ? "" : "NO RING: "}${el.id || el.textContent?.trim() || el.tagName}`;
+      });
+      reached.push(stop);
+    }
+    const all = reached.join("\n");
+    expect(all).not.toContain("NO RING");
+    for (const name of ["Clip", "jtb-start", "Set start to now", "jtb-end", "Set end to now", "+15s", "+2m", "jtb-note", "Copy link", "Open"]) {
+      expect(all, name).toContain(name);
+    }
+  });
+
+  test("the toolbar popup passes axe", async ({ extensionId, context }) => {
+    const popup = await context.newPage();
+    await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+    await expect(popup.getByTestId("jtb-popup-message")).toBeVisible();
+    const results = await new AxeBuilder({ page: popup }).withTags(TAGS).analyze();
+    expect(results.violations.map((v) => v.id)).toEqual([]);
   });
 });

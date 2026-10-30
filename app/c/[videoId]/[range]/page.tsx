@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { preconnect } from "react-dom";
 import { ClipViewer } from "@/components/viewer/clip-viewer";
 import { parseClipParams, youtubeWatchUrl } from "@/lib/clip";
 import { brokenClipMetadata, clipMetadata } from "@/lib/clip-metadata";
@@ -25,6 +26,11 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 }
 
 export default function ClipPage(props: Props) {
+  // Open the connections early: the player script and embed come from www.youtube.com, the
+  // thumbnail from i.ytimg.com. Part of the static shell, so the hints are in the first bytes.
+  preconnect("https://www.youtube.com");
+  preconnect("https://i.ytimg.com");
+
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6 sm:px-6 sm:py-10">
       <Suspense fallback={<ViewerSkeleton />}>

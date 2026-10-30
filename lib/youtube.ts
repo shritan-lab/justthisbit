@@ -21,6 +21,10 @@ const SHORT_HOSTS = new Set(["youtu.be", "www.youtu.be"]);
 // Paths where the video id is the second segment: /shorts/ID, /live/ID, /embed/ID, /v/ID.
 const ID_IN_PATH = new Set(["shorts", "live", "embed", "v"]);
 
+// Path words that are 11 characters long like an id but are not videos.
+// /embed/videoseries?list=... is an embedded playlist.
+const NOT_VIDEO_IDS = new Set(["videoseries"]);
+
 // Pasted text can be long (a whole chat message). Nothing useful is past this point.
 const MAX_INPUT_LENGTH = 4000;
 
@@ -71,7 +75,8 @@ function fromUrl(url: URL): YouTubeInput | null {
     return parsed.ok ? { videoId: parsed.clip.videoId, startSeconds: parsed.clip.start } : null;
   }
 
-  return isValidVideoId(videoId) ? withStart(videoId, readStart(url)) : null;
+  if (!isValidVideoId(videoId) || NOT_VIDEO_IDS.has(videoId)) return null;
+  return withStart(videoId, readStart(url));
 }
 
 /**

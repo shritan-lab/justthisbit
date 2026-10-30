@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_RECENT_CLIPS,
   RECENT_CLIPS_KEY,
+  UNTITLED_VIDEO,
   addRecentClip,
   clearRecentClips,
   readRecentClips,
+  retitleRecentClips,
   writeRecentClips,
   type RecentClip,
   type StorageLike,
@@ -112,5 +114,50 @@ describe("addRecentClip", () => {
   it("ignores an invalid clip", () => {
     const list = [clip(10)];
     expect(addRecentClip(list, { ...clip(20), url: "https://example.com/" })).toBe(list);
+  });
+});
+
+describe("retitleRecentClips", () => {
+  const OTHER = "aaaaaaaaaaa";
+  const untitled = (start: number, id = ID): RecentClip => ({
+    url: `${SITE}/c/${id}/${start}-${start + 30}`,
+    title: UNTITLED_VIDEO,
+    start,
+    end: start + 30,
+  });
+
+  it("fills in the title of clips saved before it loaded", () => {
+    const list = [untitled(10), untitled(20, OTHER), clip(30)];
+    const next = retitleRecentClips(list, ID, "  Never Gonna Give You Up ");
+    expect(next.map((c) => c.title)).toEqual(["Never Gonna Give You Up", UNTITLED_VIDEO, "A video"]);
+  });
+
+  it("keeps notes, times and links", () => {
+    const list = [{ ...untitled(10), note: "watch this 👀" }];
+    expect(retitleRecentClips(list, ID, "Real title")).toEqual([{ ...list[0], title: "Real title" }]);
+  });
+
+  it("returns the same list when nothing changes", () => {
+    const list = [clip(10), untitled(20, OTHER)];
+    expect(retitleRecentClips(list, ID, "Real title")).toBe(list);
+    expect(retitleRecentClips([untitled(10)], ID, "   ")).toEqual([untitled(10)]);
+    const same = [untitled(10)];
+    expect(retitleRecentClips(same, ID, "   ")).toBe(same);
+  });
+
+  it("never overwrites a real title", () => {
+    const list = [clip(10, { title: "Old real title" })];
+    expect(retitleRecentClips(list, ID, "New title")).toBe(list);
+  });
+
+  it("caps the title length like a saved clip", () => {
+    const [entry] = retitleRecentClips([untitled(10)], ID, "x".repeat(500));
+    expect(entry!.title).toHaveLength(200);
+  });
+
+  it("the result survives a round trip through storage", () => {
+    const storage = memoryStorage();
+    writeRecentClips(storage, retitleRecentClips([untitled(10)], ID, "Real title"));
+    expect(readRecentClips(storage)[0]!.title).toBe("Real title");
   });
 });

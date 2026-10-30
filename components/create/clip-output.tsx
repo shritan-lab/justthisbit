@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Clip } from "@/lib/clip";
+import { UNTITLED_VIDEO } from "@/lib/recent-clips";
 import { shareTitle, whatsappShareUrl } from "@/lib/share";
 import { copyText, useCanShare } from "./browser";
-import { rememberClip } from "./recent-clips-store";
+import { rememberClip, retitleClips } from "./recent-clips-store";
 import { primaryButton, secondaryButton } from "./styles";
 
 type Props = {
@@ -21,12 +22,17 @@ export function ClipOutput({ url, clip, length, videoTitle }: Props) {
 
   useEffect(() => () => window.clearTimeout(resetTimer.current), []);
 
+  // A link shared before the title loaded was saved as "YouTube video". Fix it once the title is here.
+  useEffect(() => {
+    if (videoTitle) retitleClips(clip.videoId, videoTitle);
+  }, [clip.videoId, videoTitle]);
+
   const title = shareTitle(length, videoTitle);
 
   const remember = () =>
     rememberClip({
       url,
-      title: videoTitle ?? "YouTube video",
+      title: videoTitle ?? UNTITLED_VIDEO,
       start: clip.start,
       end: clip.end,
       ...(clip.note ? { note: clip.note } : {}),

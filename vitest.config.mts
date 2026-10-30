@@ -9,7 +9,7 @@ export default defineConfig({
   },
   test: {
     // Unit tests only. Playwright specs live in e2e/ and run with `npm run test:e2e`.
-    include: ["lib/**/*.test.ts", "extension/src/**/*.test.ts"],
+    include: ["lib/**/*.test.ts", "app/**/*.test.ts", "extension/src/**/*.test.ts"],
     environment: "node",
   },
 });

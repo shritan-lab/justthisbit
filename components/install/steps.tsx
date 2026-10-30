@@ -8,7 +8,7 @@ export function Steps({ steps }: { steps: ReactNode[] }) {
         <li key={i} className="flex gap-3">
           <span
             aria-hidden="true"
-            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-base text-sm font-semibold tabular-nums text-accent"
+            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-canvas text-sm font-semibold tabular-nums text-accent"
           >
             {i + 1}
           </span>

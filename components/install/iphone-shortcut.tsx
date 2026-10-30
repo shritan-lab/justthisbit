@@ -3,7 +3,7 @@ import { primaryButton } from "../create/styles";
 import { CopyButton } from "./copy-button";
 import { Steps } from "./steps";
 
-const code = "rounded-md bg-base px-1.5 py-0.5 font-mono text-[0.9em] break-all";
+const code = "rounded-md bg-canvas px-1.5 py-0.5 font-mono text-[0.9em] break-all";
 
 /** The "Clip it" Shortcut from SPEC 6.2. iPhones can't be share targets for web apps, so this fills in. */
 export function IphoneShortcut({ siteUrl }: { siteUrl: string }) {

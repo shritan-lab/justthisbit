@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque } from "next/font/google";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import { VercelAnalytics } from "@/components/vercel-analytics";
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
@@ -30,9 +31,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${bricolage.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col bg-base text-ink">
+      <body className="flex min-h-full flex-col bg-canvas text-ink">
         {children}
         <ServiceWorkerRegister />
+        <VercelAnalytics />
       </body>
     </html>
   );

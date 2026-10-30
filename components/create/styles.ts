@@ -10,7 +10,7 @@ export const smallButton =
   "inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-line bg-surface px-3 text-sm font-medium tabular-nums text-ink transition-colors hover:border-muted disabled:cursor-not-allowed disabled:opacity-40 aria-pressed:border-accent aria-pressed:text-accent";
 
 export const textField =
-  "min-h-12 w-full min-w-0 rounded-xl border border-line bg-surface px-4 text-base text-ink placeholder:text-muted transition-colors hover:border-muted aria-invalid:border-accent";
+  "min-h-12 w-full min-w-0 rounded-xl border border-field bg-surface px-4 text-base text-ink placeholder:text-muted transition-colors hover:border-muted aria-invalid:border-accent";
 
 export const fieldLabel = "text-sm font-medium text-muted";
 

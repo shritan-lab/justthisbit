@@ -6,6 +6,7 @@ import {
   addRecentClip,
   clearRecentClips,
   readRecentClips,
+  retitleRecentClips,
   writeRecentClips,
   type RecentClip,
 } from "@/lib/recent-clips";
@@ -48,6 +49,15 @@ export function useRecentClips(): RecentClip[] {
 
 export function rememberClip(clip: RecentClip) {
   const next = addRecentClip(getSnapshot(), clip);
+  if (next === cache) return;
+  cache = next;
+  writeRecentClips(getLocalStorage(), next);
+  emit();
+}
+
+/** Fills in the video title on clips that were saved before it loaded. */
+export function retitleClips(videoId: string, title: string) {
+  const next = retitleRecentClips(getSnapshot(), videoId, title);
   if (next === cache) return;
   cache = next;
   writeRecentClips(getLocalStorage(), next);
