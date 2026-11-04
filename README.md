@@ -4,7 +4,7 @@
 
 Send a friend one link that plays only the part of a YouTube video you meant.
 
-**Live:** https://justthisbit.vercel.app
+**Try it:** [justthisbit.vercel.app](https://justthisbit.vercel.app)
 
 ## The problem
 
@@ -33,13 +33,37 @@ https://justthisbit.vercel.app/c/dQw4w9WgXcQ/90-132?n=watch%20his%20face
 
 That is the video, the start and end in seconds, and an optional note.
 
-## Ways to make a clip
+## Use it on your phone or computer
 
-- **Android share menu.** Install the site as a web app and it shows up when you tap Share in the YouTube app. If you shared with YouTube's "Start at" switch on, the start time is filled in for you. If not, it asks where you paused.
-- **iPhone Shortcut.** Coming soon. A "Clip it" Shortcut in the share sheet that opens the video in Just This Bit.
-- **Chrome extension.** Adds a Clip button next to Like and Share on YouTube, so you can set the start and end and copy the link without leaving the video. Loaded by hand for now (see below).
-- **Bookmarklet.** Drag "Clip this" to your bookmarks bar from the [install page](https://justthisbit.vercel.app/install). Click it on any YouTube video and the create page opens at the current time.
-- **Paste a link.** Go to the site and paste any YouTube link: watch pages, `youtu.be`, Shorts, live replays, embeds and mobile links all work.
+The [install page](https://justthisbit.vercel.app/install) has the same steps with buttons to copy what you need.
+
+### Android: share menu
+
+1. Open the site in Chrome and tap **Install app**. You can also tap the **⋮** menu, then **Install app** or **Add to Home screen**.
+2. In the YouTube app, tap **Share** on a video and pick **Just This Bit**. If it isn't in the list, tap **More**.
+3. If you turned on YouTube's "Start at" switch, the start time is filled in for you. If not, it asks where you paused.
+
+### iPhone: "Clip it" Shortcut
+
+iPhones don't let web apps appear in the share sheet, so a free Shortcut does the job. It takes about two minutes to build:
+
+1. Open the **Shortcuts** app, tap **+**, and name it **Clip it**.
+2. In its settings, turn on **Show in Share Sheet** and let it accept **URLs** and **Text**.
+3. Add the action **URL Encode** with **Shortcut Input** as its input.
+4. Add the action **Text**. Type `https://justthisbit.vercel.app/?url=` and insert the **URL Encoded Text** variable right after it, with no space.
+5. Add the action **Open URLs**.
+6. In YouTube, tap **Share**, then **More**, and pick **Clip it**.
+
+### Desktop: bookmarklet
+
+1. On the [install page](https://justthisbit.vercel.app/install), drag **Clip this** to your bookmarks bar.
+2. On any YouTube video, click it. The create page opens with the video and the current time filled in.
+
+There is also a Chrome extension that adds a **Clip** button next to Like and Share on YouTube. It is loaded by hand for now (see below).
+
+### Anywhere: paste a link
+
+Go to the site and paste any YouTube link. Watch pages, `youtu.be`, Shorts, live replays, embeds and mobile links all work.
 
 ## Under the hood
 
